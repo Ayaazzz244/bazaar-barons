@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Bazaar Barons</title>
+<style>
+:root{
+  --bg:#14121f; --panel:#1f1c30; --panel2:#2a2640; --ink:#f3f0ff; --muted:#a59fc4;
+  --gold:#ffc94a; --good:#3ddc97; --bad:#ff5d73; --line:#3a3556;
+  --s0:#ff8a3d; --s1:#3db4ff; --s2:#c86bff; --s3:#2fd3b0; --s4:#9aa5b1; --s5:#ffcf3d;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#14121f; } }
+:root[data-theme="dark"]{ --bg:#14121f; }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+body{min-height:100vh;padding-bottom:70px}
+button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var(--panel2);color:var(--ink);cursor:pointer;font-weight:600}
+button.primary{background:var(--gold);color:#241b00}
+button.good{background:var(--good);color:#002417}
+button.bad{background:var(--bad);color:#2a0008}
+button:disabled{opacity:.4;cursor:default}
+.wrap{max-width:560px;margin:0 auto;padding:12px 12px 0}
+h1{font-size:28px;margin:8px 0 2px;letter-spacing:.5px}
+h1 span{color:var(--gold)}
+.sub{color:var(--muted);margin:0 0 16px;font-size:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seat{display:flex;gap:8px;align-items:center;margin:8px 0}
+.seat input{flex:1;min-width:0;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font:inherit}
+.dot{width:16px;height:16px;border-radius:50%;flex:none;border:2px solid #0006}
+.seg{display:flex;background:var(--panel2);border-radius:10px;padding:3px}
+.seg button{background:transparent;padding:8px 12px}
+.seg button.on{background:var(--gold);color:#241b00}
+.hidden{display:none!important}
+/* board */
+#board{display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,1fr);gap:2px;aspect-ratio:1/1;width:100%;background:var(--line);border-radius:12px;padding:2px;position:relative}
+.cell{background:var(--panel);border-radius:5px;position:relative;overflow:hidden;font-size:clamp(7px,1.9vw,11px);line-height:1.1;padding:12px 2px 2px;text-align:center;display:flex;flex-direction:column;justify-content:flex-start;align-items:center}
+.cell .strip{position:absolute;left:0;right:0;top:0;height:9px}
+.cell .nm{font-weight:700}
+.cell .pr{color:var(--muted);margin-top:1px}
+.cell .lv{color:var(--gold);font-size:.9em;letter-spacing:-1px}
+.cell.corner{background:var(--panel2);padding-top:4px;justify-content:center}
+.cell.corner .ic{font-size:1.9em}
+.cell .own{position:absolute;bottom:2px;right:2px;width:8px;height:8px;border-radius:50%}
+.cell .boom{position:absolute;top:0;right:1px;font-size:9px}
+.cell .toks{position:absolute;bottom:2px;left:2px;display:flex;gap:1px;flex-wrap:wrap;max-width:70%}
+.tok{width:clamp(8px,2.4vw,13px);height:clamp(8px,2.4vw,13px);border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 2px #000a}
+.cell.hl{outline:2px solid var(--gold);outline-offset:-2px}
+#center{grid-column:2/7;grid-row:2/7;background:radial-gradient(circle at 50% 35%,#2e2950,#1a1729);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px;gap:6px;text-align:center}
+#turnName{font-weight:800;font-size:clamp(13px,4vw,18px)}
+#msg{font-size:clamp(11px,3.2vw,14px);color:var(--ink);min-height:2.4em;padding:0 4px}
+.dice{display:flex;gap:10px}
+.die{width:clamp(36px,11vw,54px);height:clamp(36px,11vw,54px);background:#fff;border-radius:10px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:5px;box-shadow:0 3px 0 #bbb}
+.die i{width:70%;height:70%;margin:auto;border-radius:50%;background:#1c1830;visibility:hidden}
+.die.rolling{animation:shake .5s infinite}
+@keyframes shake{0%{transform:rotate(0)}25%{transform:rotate(12deg)}75%{transform:rotate(-12deg)}100%{transform:rotate(0)}}
+#actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#actions button{padding:8px 10px;font-size:clamp(11px,3.3vw,14px)}
+.commit{font-size:clamp(8px,2.3vw,10px);color:var(--muted);font-family:ui-monospace,monospace;cursor:pointer;text-decoration:underline dotted}
+/* players */
+#players{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.pl{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px;font-size:13px}
+.pl.cur{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.pl.out{opacity:.4}
+.pl .top{display:flex;align-items:center;gap:6px;font-weight:700}
+.pl .cash{font-size:17px;font-weight:800;color:var(--good)}
+.pl .cash.neg{color:var(--bad)}
+.pl .meta{color:var(--muted);font-size:11px}
+#log{max-height:150px;overflow:auto;font-size:12px;color:var(--muted)}
+#log div{padding:3px 0;border-bottom:1px solid var(--line)}
+.topbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;margin:4px 0 8px;gap:6px}
+.topbar .info{font-size:12px;color:var(--muted)}
+.topbar button{padding:6px 10px;font-size:12px}
+/* modal */
+.modal{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal .box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;max-width:420px;width:100%;max-height:85vh;overflow:auto}
+.modal h3{margin:0 0 8px}
+.modal p{color:var(--muted);font-size:14px}
+.prop{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.prop .sw{width:10px;height:28px;border-radius:3px;flex:none}
+.prop .grow{flex:1}
+.prop button{padding:6px 8px;font-size:12px}
+code.seed{word-break:break-all;font-size:11px;display:block;background:var(--panel2);padding:6px;border-radius:6px;margin:4px 0}
+/* ad slots */
+#bannerSlot{position:fixed;left:0;right:0;bottom:0;height:60px;background:#0d0b16;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;z-index:40}
+#bannerSlot.native{background:transparent;border:0}
+.fakead{background:linear-gradient(135deg,#1e3a8a,#7c3aed);color:#fff;border-radius:16px;padding:24px;text-align:center}
+.fakead .big{font-size:40px}
+.winner{font-size:46px;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP SCREEN ============ -->
+<div id="setup" class="wrap">
+  <h1>Bazaar <span>Barons</span></h1>
+  <p class="sub">Buy businesses, grow branches, ride the market boom, and outlast your rivals.</p>
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <strong>Players</strong>
+      <div class="seg" id="countSeg"><button data-n="3">3</button><button data-n="4" class="on">4</button></div>
+    </div>
+    <div id="seats"></div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <strong>Game length</strong>
+      <div class="seg" id="lenSeg"><button data-r="15">Quick</button><button data-r="30" class="on">Normal</button><button data-r="0">Last one standing</button></div>
+    </div>
+    <p class="sub" style="margin:8px 0 0">Quick and Normal end after 15 or 30 rounds. The richest baron by net worth wins.</p>
+  </div>
+  <div class="row">
+    <button class="primary" id="startBtn" style="flex:1;padding:14px">Start game</button>
+    <button id="resumeBtn" class="hidden">Resume</button>
+    <button id="rulesBtn">Rules</button>
+  </div>
+  <p class="sub" style="margin-top:14px;font-size:12px">Pass-and-play: hand the phone to whoever's turn it is. Switch any seat to CPU to fill the table.</p>
+</div>
+
+<!-- ============ GAME SCREEN ============ -->
+<div id="game" class="wrap hidden">
+  <div class="topbar">
+    <div class="info" id="roundInfo"></div>
+    <div class="row">
+      <button id="bonusBtn" title="Watch an ad for a cash bonus">🎁 Bonus</button>
+      <button id="manageBtn">🏢 My businesses</button>
+      <button id="menuBtn">☰</button>
+    </div>
+  </div>
+  <div id="board"></div>
+  <div id="players"></div>
+  <div class="card" style="margin-top:10px">
+    <strong style="font-size:13px">Game log</strong>
+    <div id="log"></div>
+  </div>
+</div>
+
+<div id="bannerSlot">Ad banner (test)</div>
+<div id="modalRoot"></div>
+
+<script>
+/* =========================================================
+   AD CONFIG — replace these with your real AdMob IDs before
+   publishing. The App ID goes in android/app/src/main/AndroidManifest.xml.
+   These defaults are Google's public TEST ids (safe to click).
+   ========================================================= */
+const AD_CONFIG = {
+  testing: true,                                       // set false for release
+  banner:       'ca-app-pub-3940256099942544/6300978111', // TEST banner
+  interstitial: 'ca-app-pub-3940256099942544/1033173712', // TEST interstitial
+  rewarded:     'ca-app-pub-3940256099942544/5224354917', // TEST rewarded
+  interstitialMinGapMs: 180000,  // at most one interstitial every 3 minutes
+  removeAdsPurchased: false      // flip after a successful "Remove Ads" purchase
+};
+
+/* ---------- Ads wrapper: real AdMob on Android, mock in browser ---------- */
+const Ads = (() => {
+  const plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob;
+  const native = !!(plugin && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  let lastInterstitial = 0, interstitialReady = false;
+  async function init(){
+    const slot = document.getElementById('bannerSlot');
+    if (AD_CONFIG.removeAdsPurchased){ slot.classList.add('hidden'); document.body.style.paddingBottom='0'; return; }
+    if (!native){ slot.textContent = 'Ad banner (test placeholder, shows real AdMob on Android)'; return; }
+    try{
+      await plugin.initialize({ initializeForTesting: AD_CONFIG.testing });
+      try{ const c = await plugin.requestConsentInfo(); if (c.isConsentFormAvailable && c.status==='REQUIRED') await plugin.showConsentForm(); }catch(e){}
+      slot.classList.add('native'); slot.textContent='';
+      await plugin.showBanner({ adId: AD_CONFIG.banner, adSize:'ADAPTIVE_BANNER', position:'BOTTOM_CENTER', margin:0, isTesting: AD_CONFIG.testing });
+      prepInterstitial();
+    }catch(e){ console.warn('AdMob init failed', e); }
+  }
+  async function prepInterstitial(){
+    try{ await plugin.prepareInterstitial({ adId: AD_CONFIG.interstitial, isTesting: AD_CONFIG.testing }); interstitialReady = true; }catch(e){ interstitialReady=false; }
+  }
+  async function interstitial(){
+    if (AD_CONFIG.removeAdsPurchased) return;
+    if (Date.now() - lastInterstitial < AD_CONFIG.interstitialMinGapMs) return;
+    lastInterstitial = Date.now();
+    if (native){
+      if (!interstitialReady) { prepInterstitial(); return; }
+      try{ interstitialReady=false; await plugin.showInterstitial(); }catch(e){}
+      prepInterstitial();
+    } else {
+      await mockAd('Interstitial ad (test)', false);
+    }
+  }
+  // resolves true if the reward was earned
+  async function rewarded(){
+    if (native){
+      try{
+        await plugin.prepareRewardVideoAd({ adId: AD_CONFIG.rewarded, isTesting: AD_CONFIG.testing });
+        const r = await plugin.showRewardVideoAd();
+        return !!r;
+      }catch(e){ toast('No ad available right now. Try again in a moment.'); return false; }
+    }
+    return mockAd('Rewarded ad (test)', true);
+  }
+  function mockAd(title, isReward){
+    return new Promise(res => {
+      let t = isReward ? 5 : 3;
+      const m = modal(`<div class="fakead"><div class="big">📺</div><h3>${title}</h3><p style="color:#ddd">On Android this is a real AdMob ${isReward?'rewarded video':'full-screen ad'}.</p><button id="adClose" disabled>Wait ${t}s</button></div>`);
+      const b = m.querySelector('#adClose');
+      const iv = setInterval(()=>{ t--; if(t<=0){clearInterval(iv); b.disabled=false; b.textContent = isReward?'Claim reward':'Close';} else b.textContent=`Wait ${t}s`; },1000);
+      b.onclick = ()=>{ closeModal(); res(true); };
+    });
+  }
+  return { init, interstitial, rewarded, native };
+})();
+
+/* ---------- Fair, verifiable dice (commit → reveal) ----------
+   Before every roll a fresh 128-bit seed is drawn from the device's
+   cryptographic RNG and its SHA-256 hash is shown on screen. The dice are
+   computed from SHA-256(seed + "|dice") with rejection sampling so each face
+   is exactly 1/6. After the roll the seed is revealed so anyone can check that
+   the hash matches and the dice follow from it. */
+const Fair = (() => {
+  let next = null;
+  const hex = a => [...a].map(x=>x.toString(16).padStart(2,'0')).join('');
+  async function sha(str){
+    if (window.crypto && crypto.subtle){
+      const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+      return new Uint8Array(b);
+    }
+    throw new Error('Secure crypto unavailable');
+  }
+  async function prepare(){
+    const r = new Uint8Array(16); crypto.getRandomValues(r);
+    const seed = hex(r);
+    next = { seed, commit: hex(await sha(seed)) };
+    return next.commit;
+  }
+  async function diceFromSeed(seed){
+    let bytes = await sha(seed + '|dice'), out = [], i = 0, round = 0;
+    while (out.length < 2){
+      if (i >= bytes.length){ round++; bytes = await sha(seed + '|dice|' + round); i = 0; }
+      const b = bytes[i++];
+      if (b < 252) out.push(b % 6 + 1);  // 252 = 6*42, removes modulo bias
+    }
+    return out;
+  }
+  async function roll(){
+    if (!next) await prepare();
+    const used = next; next = null;
+    const dice = await diceFromSeed(used.seed);
+    return { dice, seed: used.seed, commit: used.commit };
+  }
+  async function verify(seed, commit){
+    const h = hex(await sha(seed));
+    return { ok: h === commit, dice: await diceFromSeed(seed), hash: h };
+  }
+  function commit(){ return next ? next.commit : null; }
+  function randInt(n){ // unbiased integer in [0,n)
+    const lim = Math.floor(4294967296 / n) * n, a = new Uint32Array(1);
+    do { crypto.getRandomValues(a); } while (a[0] >= lim);
+    return a[0] % n;
+  }
+  return { prepare, roll, verify, commit, randInt };
+})();
+
+/* ---------- Board data (original) ---------- */
+const SECTORS = [
+  { name:'Street Food', color:'var(--s0)' },
+  { name:'Retail',      color:'var(--s1)' },
+  { name:'Media',       color:'var(--s2)' },
+  { name:'Tech',        color:'var(--s3)' },
+  { name:'Logistics',   color:'var(--s4)' },
+  { name:'Luxury',      color:'var(--s5)' },
+];
+const P = (name, sector, price) => ({ type:'biz', name, sector, price });
+const SPACES = [
+  { type:'payday', name:'Payday', icon:'💰' },
+  P('Chai Stall',0,60), P('Samosa Cart',0,60), P('Dosa Corner',0,80),
+  P('Kirana Store',1,100), P('Mobile Shop',1,110),
+  { type:'audit', name:'Audit Office', icon:'🧾' },
+  P('Fashion Outlet',1,120), P('Podcast Studio',2,140),
+  { type:'news', name:'Market News', icon:'📰' },
+  P('Ad Agency',2,150), P('Film House',2,160),
+  { type:'lounge', name:'Investor Lounge', icon:'🛋️' },
+  P('App Studio',3,180), P('Cloud Startup',3,190), P('AI Lab',3,200),
+  P('Courier Hub',4,220), P('Port Warehouse',4,230),
+  { type:'raid', name:'Tax Raid!', icon:'🚨' },
+  P('Cargo Airline',4,250), P('Beach Resort',5,270),
+  { type:'news', name:'Market News', icon:'📰' },
+  P('Jewel House',5,290), P('Sky Tower',5,330),
+];
+const SALARY = 150, START_CASH = 1500, MAX_LEVEL = 3;
+const LEVEL_MULT = [1, 4, 10, 18];    // rent multiplier per branch level
+const cellPos = i => { // 7x7 perimeter, clockwise from bottom-right
+  if (i <= 6) return [7, 7 - i];
+  if (i <= 12) return [7 - (i - 6), 1];
+  if (i <= 18) return [1, 1 + (i - 12)];
+  return [1 + (i - 18), 7];
+};
+const NEWS = [
+  { t:'Viral review! Your business trends online. Collect ₹150.', f:p=>gain(p,150) },
+  { t:'GST refund arrives. Collect ₹100.', f:p=>gain(p,100) },
+  { t:'Angel investor backs you. Collect ₹50 from every player.', f:p=>alive().forEach(o=>{ if(o!==p) transfer(o,p,50); }) },
+  { t:'You sponsor the city festival. Pay ₹40 to every player.', f:p=>alive().forEach(o=>{ if(o!==p) transfer(p,o,40); }) },
+  { t:'Equipment breakdown. Pay ₹120 into the Investor Lounge pot.', f:p=>payPot(p,120) },
+  { t:'Branch maintenance: pay ₹25 per branch you own.', f:p=>payPot(p,25*branches(p)) },
+  { t:'Business expo! Advance to Payday and collect salary.', f:p=>moveTo(p,0) },
+  { t:'Fly to the Investor Lounge to pitch.', f:p=>moveTo(p,12) },
+  { t:'Surprise inspection! Go straight to the Audit Office.', f:p=>sendToAudit(p) },
+  { t:'Clean books certificate. Keep it to skip one audit.', f:p=>{ p.cleanBooks++; } },
+  { t:'Market shift! A new sector starts booming.', f:p=>newBoom() },
+  { t:'Shortcut through traffic: move forward 3 spaces.', f:p=>stepForward(p,3) },
+  { t:'Delivery delay. Move back 2 spaces.', f:p=>{ p.pos=(p.pos+SPACES.length-2)%SPACES.length; landOn(p,true); } },
+  { t:'Best Employer award. Collect ₹75.', f:p=>gain(p,75) },
+];
+
+/* ---------- State ---------- */
+let S = null;
+const COLORS = ['#ff4d6d','#2ec4b6','#ffb703','#8e7dff'];
+let setupCount = 4, setupRounds = 30;
+const seatsCfg = [
+  { name:'Player 1', bot:false }, { name:'Player 2', bot:false },
+  { name:'Player 3', bot:false }, { name:'Player 4', bot:true },
+];
+
+const $ = s => document.querySelector(s);
+const fmt = n => (n<0?'-₹':'₹') + Math.abs(Math.round(n)).toLocaleString('en-IN');
+const cur = () => S.players[S.turn];
+const alive = () => S.players.filter(p => !p.bankrupt);
+const sectorOwner = sec => { // returns player index if one player owns all of sector
+  const idx = SPACES.map((s,i)=>i).filter(i=>SPACES[i].sector===sec && SPACES[i].type==='biz');
+  const o = S.owners[idx[0]];
+  return (o!=null && idx.every(i=>S.owners[i]===o)) ? o : null;
+};
+function rentOf(i){
+  const sp = SPACES[i], lv = S.levels[i]||0;
+  let r = Math.round(sp.price * 0.12) * LEVEL_MULT[lv];
+  if (lv===0 && sectorOwner(sp.sector)!==null) r *= 2;
+  if (S.boom === sp.sector) r = Math.round(r * 1.5);
+  return r;
+}
+const upgradeCost = i => Math.round(SPACES[i].price * 0.6);
+const branches = p => Object.keys(S.levels).reduce((a,i)=>a+(S.owners[i]===p.id?S.levels[i]:0),0);
+const netWorth = p => p.cash + Object.keys(S.owners).filter(i=>S.owners[i]===p.id).reduce((a,i)=>a+SPACES[i].price+(S.levels[i]||0)*upgradeCost(i),0);
+
+function save(){ try{ localStorage.setItem('bb_save', JSON.stringify(S)); }catch(e){} }
+function loadSave(){ try{ const s = localStorage.getItem('bb_save'); return s ? JSON.parse(s) : null; }catch(e){ return null; } }
+function clearSave(){ try{ localStorage.removeItem('bb_save'); }catch(e){} }
+
+function log(t){ S.log.unshift(t); S.log = S.log.slice(0,80); }
+function say(t){ S.msg = t; log(t); }
+
+/* ---------- Money ---------- */
+function gain(p,n){ p.cash += n; }
+function transfer(from,to,n){ from.cash -= n; to.cash += n; }
+function payPot(p,n){ p.cash -= n; S.pot += n; }
+
+/* ---------- Setup UI ---------- */
+function renderSeats(){
+  const el = $('#seats'); el.innerHTML='';
+  for (let i=0;i<setupCount;i++){
+    const s = seatsCfg[i];
+    const d = document.createElement('div'); d.className='seat';
+    d.innerHTML = `<span class="dot" style="background:${COLORS[i]}"></span>
+      <input maxlength="12" value="${s.name}" aria-label="Name for seat ${i+1}">
+      <div class="seg"><button class="${s.bot?'':'on'}">Human</button><button class="${s.bot?'on':''}">CPU</button></div>`;
+    d.querySelector('input').oninput = e => s.name = e.target.value;
+    const [h,c] = d.querySelectorAll('.seg button');
+    h.onclick = ()=>{ s.bot=false; renderSeats(); };
+    c.onclick = ()=>{ s.bot=true; renderSeats(); };
+    el.appendChild(d);
+  }
+}
+document.querySelectorAll('#countSeg button').forEach(b=>b.onclick=()=>{ setupCount=+b.dataset.n; document.querySelectorAll('#countSeg button').forEach(x=>x.classList.toggle('on',x===b)); renderSeats(); });
+document.querySelectorAll('#lenSeg button').forEach(b=>b.onclick=()=>{ setupRounds=+b.dataset.r; document.querySelectorAll('#lenSeg button').forEach(x=>x.classList.toggle('on',x===b)); });
+
+function shuffledDeck(){
+  const d = NEWS.map((_,i)=>i);
+  for (let i=d.length-1;i>0;i--){ const j=Fair.randInt(i+1); [d[i],d[j]]=[d[j],d[i]]; }
+  return d;
+}
+function newGame(){
+  if (!seatsCfg.slice(0,setupCount).some(s=>!s.bot)) { toast('Make at least one seat Human.'); return; }
+  S = {
+    players: seatsCfg.slice(0,setupCount).map((s,i)=>({ id:i, name:(s.name||`Player ${i+1}`).trim(), color:COLORS[i], bot:s.bot, cash:START_CASH, pos:0, audit:0, cleanBooks:0, bankrupt:false, bonusUsed:false, bailoutUsed:false })),
+    owners:{}, levels:{}, turn:0, round:1, maxRounds:setupRounds, pot:0, boom:Fair.randInt(6),
+    doubles:0, phase:'roll', deck:shuffledDeck(), log:[], msg:'', lastRoll:[1,1], lastProof:null, rolls:[],
+  };
+  say(`Game on! ${SECTORS[S.boom].name} is booming (+50% rent). ${cur().name} rolls first.`);
+  startGame();
+}
+function startGame(){
+  $('#setup').classList.add('hidden'); $('#game').classList.remove('hidden');
+  buildBoard(); Fair.prepare().then(render); render(); maybeBot();
+}
+
+/* ---------- Board rendering ---------- */
+function buildBoard(){
+  const b = $('#board'); b.innerHTML='';
+  SPACES.forEach((sp,i)=>{
+    const [r,c] = cellPos(i);
+    const d = document.createElement('div');
+    d.className = 'cell' + (sp.type==='biz'?'':' corner'); d.id='c'+i;
+    d.style.gridRow=r; d.style.gridColumn=c;
+    d.onclick = ()=>showSpace(i);
+    b.appendChild(d);
+  });
+  const center = document.createElement('div'); center.id='center';
+  center.innerHTML = `<div id="turnName"></div>
+    <div class="dice"><div class="die" id="d1"></div><div class="die" id="d2"></div></div>
+    <div id="msg"></div><div id="actions"></div>
+    <div class="commit" id="commit" title="Tap to learn how fair dice work"></div>`;
+  b.appendChild(center);
+  ['d1','d2'].forEach(id=>{ const d=$('#'+id); for(let k=0;k<9;k++) d.appendChild(document.createElement('i')); });
+  $('#commit').onclick = showFairness;
+}
+const PIPS = {1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function drawDie(id,v){ $('#'+id).querySelectorAll('i').forEach((p,k)=>p.style.visibility=PIPS[v].includes(k)?'visible':'hidden'); }
+
+function render(){
+  if (!S) return;
+  SPACES.forEach((sp,i)=>{
+    const d = $('#c'+i); let h='';
+    if (sp.type==='biz'){
+      const o = S.owners[i], lv=S.levels[i]||0;
+      h = `<div class="strip" style="background:${SECTORS[sp.sector].color}"></div>
+        <div class="nm">${sp.name}</div>
+        <div class="pr">${o==null?fmt(sp.price):fmt(rentOf(i))}</div>
+        <div class="lv">${'★'.repeat(lv)}</div>
+        ${o!=null?`<span class="own" style="background:${S.players[o].color}"></span>`:''}
+        ${S.boom===sp.sector?'<span class="boom">🔥</span>':''}`;
+    } else {
+      h = `<div class="ic">${sp.icon}</div><div class="nm">${sp.name}</div>${sp.type==='lounge'?`<div class="pr">${fmt(S.pot)}</div>`:''}`;
+    }
+    h += `<div class="toks">${S.players.filter(p=>!p.bankrupt&&p.pos===i).map(p=>`<span class="tok" style="background:${p.color}"></span>`).join('')}</div>`;
+    d.innerHTML = h;
+    d.classList.toggle('hl', i===cur().pos && S.phase!=='over');
+  });
+  const p = cur();
+  $('#turnName').innerHTML = S.phase==='over' ? 'Game over' : `<span class="dot" style="display:inline-block;vertical-align:-2px;background:${p.color}"></span> ${p.name}'s turn${p.bot?' (CPU)':''}`;
+  $('#msg').textContent = S.msg;
+  drawDie('d1',S.lastRoll[0]); drawDie('d2',S.lastRoll[1]);
+  const c = Fair.commit();
+  $('#commit').textContent = c ? `🔒 next roll locked: ${c.slice(0,16)}…` : (S.lastProof ? `✅ verify last roll` : '');
+  $('#roundInfo').textContent = `Round ${S.round}${S.maxRounds?` / ${S.maxRounds}`:''} · 🔥 ${SECTORS[S.boom].name} boom · Pot ${fmt(S.pot)}`;
+  renderActions();
+  $('#players').innerHTML = S.players.map(q=>`<div class="pl ${q===p&&S.phase!=='over'?'cur':''} ${q.bankrupt?'out':''}">
+      <div class="top"><span class="dot" style="background:${q.color}"></span>${q.name}${q.bot?' 🤖':''}</div>
+      <div class="cash ${q.cash<0?'neg':''}">${q.bankrupt?'Bankrupt':fmt(q.cash)}</div>
+      <div class="meta">${Object.values(S.owners).filter(o=>o===q.id).length} businesses · ${branches(q)} branches · worth ${fmt(netWorth(q))}${q.audit?' · 🧾 in audit':''}${q.cleanBooks?' · 📜':''}</div></div>`).join('');
+  $('#log').innerHTML = S.log.slice(0,30).map(t=>`<div>${t}</div>`).join('');
+  const human = !p.bot && S.phase!=='over' && !busy;
+  $('#manageBtn').disabled = !human;
+  $('#bonusBtn').disabled = !human || p.bonusUsed;
+  save();
+}
+function renderActions(){
+  const a = $('#actions'), p = cur(); a.innerHTML='';
+  if (busy || p.bot || S.phase==='over'){
+    if (S.phase==='over'){ btn(a,'New game','primary',()=>backToMenu(true)); }
+    return;
+  }
+  if (S.phase==='roll'){
+    if (p.audit){
+      btn(a,'Roll for doubles','primary',doRoll);
+      btn(a,`Pay ₹50 & leave`,'',()=>{ payPot(p,50); p.audit=0; say(`${p.name} paid ₹50 to clear the audit.`); render(); });
+    } else btn(a,'🎲 Roll dice','primary',doRoll);
+  } else if (S.phase==='buy'){
+    const i=p.pos, sp=SPACES[i];
+    const b = btn(a,`Buy ${fmt(sp.price)}`,'good',()=>buy(p,i));
+    if (p.cash < sp.price) b.disabled = true;
+    btn(a,'Skip','',()=>{ say(`${p.name} passed on ${sp.name}.`); afterLanding(); });
+  } else if (S.phase==='takeover'){
+    const b = btn(a,`💼 Takeover ${fmt(takeoverPrice(p.pos))}`,'good',()=>takeover(p,p.pos));
+    if (p.cash < takeoverPrice(p.pos)) b.disabled = true;
+    btn(a,'No thanks','',afterLanding);
+  } else if (S.phase==='debt'){
+    if (!p.bailoutUsed) btn(a,'📺 Ad bailout +₹300','good',()=>bailout(p));
+    btn(a,'Sell assets','',()=>openManage());
+    btn(a,'Declare bankrupt','bad',()=>goBankrupt(p));
+  } else if (S.phase==='end'){
+    btn(a, S.again ? '🎲 Roll again (doubles)' : 'End turn', 'primary', ()=>{ if (S.again){ S.phase='roll'; doRoll(); } else endTurn(); });
+  }
+}
+function btn(parent,label,cls,fn){ const b=document.createElement('button'); b.textContent=label; if(cls) b.className=cls; b.onclick=fn; parent.appendChild(b); return b; }
+
+/* ---------- Turn flow ---------- */
+let busy = false;
+let SPEED = 1; // test hook
+const wait = ms => new Promise(r=>setTimeout(r,ms*SPEED));
+
+async function doRoll(){
+  if (busy) return; busy = true; render();
+  const p = cur();
+  $('#d1').classList.add('rolling'); $('#d2').classList.add('rolling');
+  const spin = setInterval(()=>{ drawDie('d1',1+Math.floor(Math.random()*6)); drawDie('d2',1+Math.floor(Math.random()*6)); },80); // cosmetic only
+  const res = await Fair.roll();
+  await wait(p.bot?450:700);
+  clearInterval(spin); $('#d1').classList.remove('rolling'); $('#d2').classList.remove('rolling');
+  S.lastRoll = res.dice; S.lastProof = res;
+  S.rolls.unshift({ who:p.name, dice:res.dice, seed:res.seed, commit:res.commit }); S.rolls = S.rolls.slice(0,40);
+  const [a,b] = res.dice, dbl = a===b, total=a+b;
+  Fair.prepare().then(render);
+  S.again = false;
+  if (p.audit){
+    if (dbl){ p.audit=0; say(`${p.name} rolled doubles (${a}+${b}) and leaves the audit!`); await walk(p,total); }
+    else { p.audit--; say(`${p.name} rolled ${a}+${b}, no doubles. ${p.audit? 'Still in audit.':'Audit ends next turn.'}`); S.phase='end'; }
+  } else {
+    if (dbl){ S.doubles++; if (S.doubles>=3){ say(`${p.name} rolled 3 doubles in a row. Suspicious! Off to the Audit Office.`); sendToAudit(p); S.phase='end'; busy=false; render(); maybeBot(); return; } }
+    say(`${p.name} rolled ${a} + ${b} = ${total}${dbl?' (doubles!)':''}.`);
+    await walk(p,total);
+    if (dbl && !p.audit && !p.bankrupt) S.again = true;
+  }
+  busy = false; render(); maybeBot();
+}
+async function walk(p,n){
+  for (let k=0;k<n;k++){
+    p.pos = (p.pos+1) % SPACES.length;
+    if (p.pos===0 && k<n-1){ gain(p,SALARY); log(`${p.name} passed Payday: +${fmt(SALARY)}.`); }
+    render(); await wait(p.bot?90:140);
+  }
+  landOn(p,false);
+}
+function stepForward(p,n){ for(let k=0;k<n;k++){ p.pos=(p.pos+1)%SPACES.length; if(p.pos===0 && k<n-1) gain(p,SALARY); } landOn(p,true); }
+function moveTo(p,i){ if (i < p.pos || i===0) { gain(p,SALARY); log(`${p.name} collects ${fmt(SALARY)} salary.`); } p.pos=i; if (i!==0) landOn(p,true); }
+function sendToAudit(p){
+  S.doubles=0; S.again=false;
+  if (p.cleanBooks){ p.cleanBooks--; say(`${p.name} shows a Clean Books certificate and skips the audit.`); return; }
+  p.pos=6; p.audit=2; log(`${p.name} is stuck in the Audit Office (up to 2 turns).`);
+}
+function newBoom(){ let n; do { n=Fair.randInt(6); } while(n===S.boom); S.boom=n; log(`📈 Market shift: ${SECTORS[n].name} is now booming!`); }
+
+function landOn(p, fromCard){
+  const i = p.pos, sp = SPACES[i];
+  S.phase = 'end';
+  if (sp.type==='biz'){
+    const o = S.owners[i];
+    if (o==null){ S.phase='buy'; S.msg += ` Landed on ${sp.name}. Buy it for ${fmt(sp.price)}?`; }
+    else if (o!==p.id){
+      const owner = S.players[o], r = rentOf(i);
+      if (owner.bankrupt || owner.audit) { log(`${owner.name} is ${owner.bankrupt?'out':'in audit'}: no rent at ${sp.name}.`); }
+      else { transfer(p,owner,r); say(`${p.name} pays ${fmt(r)} rent to ${owner.name} at ${sp.name}.`); }
+      if (!owner.bankrupt && takeoverOk(i) && p.cash >= 0){ S.phase='takeover'; S.msg += ` Hostile takeover for ${fmt(takeoverPrice(i))}?`; render(); return; }
+    } else log(`${p.name} visits their own ${sp.name}.`);
+  } else if (sp.type==='payday'){ if(!fromCard){ gain(p,SALARY+100); say(`${p.name} lands right on Payday: +${fmt(SALARY+100)}!`); } }
+  else if (sp.type==='news'){
+    if (!S.deck.length) S.deck = shuffledDeck();
+    const c = NEWS[S.deck.pop()];
+    say(`📰 ${p.name}: ${c.t}`);
+    c.f(p);
+    if (S.phase==='buy') { render(); return; }
+  }
+  else if (sp.type==='lounge'){ if (S.pot>0){ say(`${p.name} wins the Investor Lounge pot of ${fmt(S.pot)}!`); gain(p,S.pot); S.pot=0; } else log(`${p.name} relaxes in the Investor Lounge.`); }
+  else if (sp.type==='raid'){ say(`🚨 Tax Raid! ${p.name} is sent to the Audit Office.`); sendToAudit(p); }
+  else if (sp.type==='audit'){ log(`${p.name} is just visiting the Audit Office.`); }
+  if (S.phase!=='buy') checkDebt(p);
+}
+const takeoverPrice = i => SPACES[i].price * 2;
+// a rival's business can be bought out at 2x price, unless it has branches or completes the owner's sector
+function takeoverOk(i){ const o=S.owners[i]; return o!=null && !(S.levels[i]>0) && sectorOwner(SPACES[i].sector)!==o; }
+function takeover(p,i){
+  const o=S.players[S.owners[i]], c=takeoverPrice(i);
+  transfer(p,o,c); S.owners[i]=p.id;
+  say(`💼 ${p.name} bought ${SPACES[i].name} from ${o.name} in a hostile takeover for ${fmt(c)}!`);
+  if (sectorOwner(SPACES[i].sector)===p.id) log(`🏆 ${p.name} now owns the whole ${SECTORS[SPACES[i].sector].name} sector!`);
+  afterLanding();
+}
+function buy(p,i){
+  p.cash -= SPACES[i].price; S.owners[i]=p.id;
+  say(`${p.name} bought ${SPACES[i].name} for ${fmt(SPACES[i].price)}.`);
+  if (sectorOwner(SPACES[i].sector)===p.id) log(`🏆 ${p.name} owns the whole ${SECTORS[SPACES[i].sector].name} sector: double rent and branches unlocked!`);
+  afterLanding();
+}
+function afterLanding(){ S.phase='end'; checkDebt(cur()); render(); maybeBot(); }
+function checkDebt(p){ if (p.cash<0 && !p.bankrupt){ S.phase='debt'; S.msg += ` ${p.name} is short ${fmt(-p.cash)}!`; } }
+function resolveDebt(p){ if (p.cash>=0 && S.phase==='debt'){ S.phase='end'; say(`${p.name} is back in the black.`); } }
+
+async function bailout(p){
+  busy=true; render();
+  const ok = await Ads.rewarded();
+  busy=false;
+  if (ok){ p.bailoutUsed=true; gain(p,300); say(`📺 ${p.name} got a ₹300 sponsor bailout.`); resolveDebt(p); }
+  render();
+}
+async function bonus(){
+  const p=cur(); if (p.bonusUsed||p.bot) return;
+  busy=true; render();
+  const ok = await Ads.rewarded();
+  busy=false;
+  if (ok){ p.bonusUsed=true; gain(p,150); say(`🎁 ${p.name} watched an ad and earned ₹150.`); resolveDebt(p); }
+  render();
+}
+
+function sellBranch(i){ const p=cur(); S.levels[i]--; gain(p,Math.round(upgradeCost(i)/2)); log(`${p.name} sold a branch of ${SPACES[i].name}.`); resolveDebt(p); }
+function sellBiz(i){
+  const p=cur(), sec=SPACES[i].sector;
+  // must remove branches in that sector first
+  SPACES.forEach((s,j)=>{ if(s.sector===sec && S.owners[j]===p.id && S.levels[j]){ gain(p,Math.round(upgradeCost(j)/2)*S.levels[j]); S.levels[j]=0; } });
+  delete S.owners[i]; gain(p,Math.round(SPACES[i].price/2));
+  log(`${p.name} sold ${SPACES[i].name} to the bank.`); resolveDebt(p);
+}
+function upgrade(i){
+  const p=cur(), c=upgradeCost(i);
+  if (p.cash<c) return; p.cash-=c; S.levels[i]=(S.levels[i]||0)+1;
+  log(`${p.name} opened a new branch at ${SPACES[i].name} (${'★'.repeat(S.levels[i])}).`);
+}
+function canUpgrade(p,i){
+  const sp=SPACES[i];
+  if (S.owners[i]!==p.id || sectorOwner(sp.sector)!==p.id) return false;
+  const lv=S.levels[i]||0; if (lv>=MAX_LEVEL) return false;
+  // build evenly across the sector
+  const minLv = Math.min(...SPACES.map((s,j)=>s.sector===sp.sector&&s.type==='biz'?(S.levels[j]||0):99));
+  return lv===minLv && p.cash>=upgradeCost(i) && S.phase!=='debt';
+}
+function goBankrupt(p, creditor){
+  p.bankrupt=true; p.cash=0;
+  Object.keys(S.owners).forEach(i=>{ if(S.owners[i]===p.id){ delete S.owners[i]; delete S.levels[i]; } });
+  say(`💥 ${p.name} is bankrupt! Their businesses return to the market.`);
+  S.phase='end'; S.again=false;
+  if (alive().length<=1) return finish();
+  endTurn();
+}
+function endTurn(){
+  if (S.phase==='over') return;
+  if (S.phase==='debt') return;
+  S.doubles=0; S.again=false;
+  let n=S.turn;
+  do { n=(n+1)%S.players.length; if (n===0) { S.round++; if (S.round%5===0) newBoom(); } } while(S.players[n].bankrupt);
+  if (S.maxRounds && S.round > S.maxRounds) { S.round = S.maxRounds; return finish(); }
+  S.turn=n; S.phase='roll';
+  S.msg = `${cur().name}, your turn.`;
+  render();
+  if (!cur().bot && S.round>1 && n===firstAlive()) Ads.interstitial(); // natural break: once per round, capped by time
+  maybeBot();
+}
+const firstAlive = () => S.players.findIndex(p=>!p.bankrupt);
+
+function finish(){
+  S.phase='over'; busy=false;
+  const ranked = [...S.players].sort((a,b)=>(a.bankrupt-b.bankrupt)||netWorth(b)-netWorth(a));
+  const w = ranked[0];
+  say(`🏆 ${w.name} wins with a net worth of ${fmt(netWorth(w))}!`);
+  render(); clearSave();
+  setTimeout(async ()=>{
+    await Ads.interstitial();
+    modal(`<div class="winner">🏆</div><h3 style="text-align:center">${w.name} is the Bazaar Baron!</h3>
+      ${ranked.map((p,k)=>`<div class="prop"><b>${k+1}.</b><span class="dot" style="background:${p.color}"></span><span class="grow">${p.name}</span><b>${p.bankrupt?'Bankrupt':fmt(netWorth(p))}</b></div>`).join('')}
+      <div class="row" style="margin-top:14px"><button class="primary" style="flex:1" onclick="closeModal();backToMenu(false)">Play again</button><button onclick="closeModal()">View board</button></div>`);
+  }, 600);
+}
+function backToMenu(ad){ if (ad) Ads.interstitial(); S=null; clearSave(); $('#game').classList.add('hidden'); $('#setup').classList.remove('hidden'); $('#resumeBtn').classList.add('hidden'); }
+
+/* ---------- CPU players ---------- */
+let botTimer=null;
+function maybeBot(){
+  clearTimeout(botTimer);
+  if (!S || S.phase==='over' || busy) return;
+  const p=cur(); if (!p.bot) return;
+  botTimer = setTimeout(botStep, 650*SPEED);
+}
+function botStep(){
+  if (!S || busy) return;
+  const p=cur(); if (!p.bot || S.phase==='over') return;
+  if (S.phase==='roll'){
+    if (p.audit && p.cash>600){ payPot(p,50); p.audit=0; say(`${p.name} paid ₹50 to clear the audit.`); }
+    doRoll(); return;
+  }
+  if (S.phase==='buy'){
+    const sp=SPACES[p.pos];
+    if (p.cash - sp.price >= 120) buy(p,p.pos); else { say(`${p.name} passed on ${sp.name}.`); afterLanding(); }
+    return;
+  }
+  if (S.phase==='takeover'){
+    const i=p.pos, sec=SPACES[i].sector, c=takeoverPrice(i);
+    const mine = SPACES.filter((s,j)=>s.sector===sec && S.owners[j]===p.id).length;
+    if (p.cash - c >= 200 && (mine>=2 || (mine>=1 && p.cash - c >= 700))) takeover(p,i); else afterLanding();
+    return;
+  }
+  if (S.phase==='debt'){
+    // sell branches first, then cheapest businesses
+    while (p.cash<0){
+      const br = Object.keys(S.levels).find(i=>S.owners[i]===p.id && S.levels[i]>0);
+      if (br!=null){ sellBranch(+br); continue; }
+      const own = Object.keys(S.owners).filter(i=>S.owners[i]===p.id).sort((a,b)=>SPACES[a].price-SPACES[b].price);
+      if (!own.length) break;
+      sellBiz(+own[0]);
+    }
+    if (p.cash<0) { goBankrupt(p); return; }
+    S.phase='end'; render(); maybeBot(); return;
+  }
+  if (S.phase==='end'){
+    // build branches when comfortable
+    let built=true;
+    while (built){
+      built=false;
+      for (let i=0;i<SPACES.length;i++){
+        if (SPACES[i].type==='biz' && canUpgrade(p,i) && p.cash-upgradeCost(i)>=250){ upgrade(i); built=true; }
+      }
+    }
+    if (S.again){ S.phase='roll'; render(); doRoll(); } else endTurn();
+  }
+}
+
+/* ---------- Modals ---------- */
+function modal(html){ const r=$('#modalRoot'); r.innerHTML=`<div class="modal"><div class="box">${html}</div></div>`; r.firstChild.onclick=e=>{ if(e.target===r.firstChild && !r.querySelector('#adClose')) closeModal(); }; return r.firstChild; }
+function closeModal(){ $('#modalRoot').innerHTML=''; }
+function toast(t){ const m=modal(`<p style="color:var(--ink)">${t}</p><button class="primary" onclick="closeModal()">OK</button>`); }
+
+function openManage(){
+  const p=cur();
+  const own = SPACES.map((s,i)=>i).filter(i=>S.owners[i]===p.id);
+  const rows = own.length ? own.map(i=>{
+    const sp=SPACES[i], lv=S.levels[i]||0;
+    return `<div class="prop"><span class="sw" style="background:${SECTORS[sp.sector].color}"></span>
+      <span class="grow"><b>${sp.name}</b> ${'★'.repeat(lv)}<br><span style="color:var(--muted)">Rent ${fmt(rentOf(i))}</span></span>
+      <button class="good" data-up="${i}" ${canUpgrade(p,i)?'':'disabled'}>+Branch ${fmt(upgradeCost(i))}</button>
+      <button data-sell="${i}">${lv?`Sell branch +${fmt(upgradeCost(i)/2)}`:`Sell +${fmt(sp.price/2)}`}</button></div>`;
+  }).join('') : '<p>You don\'t own any businesses yet. Land on one and buy it!</p>';
+  const m = modal(`<h3>${p.name}'s businesses · ${fmt(p.cash)}</h3>
+    <p>Own every business in a sector to double its rent and unlock branches. Branches must be built evenly.</p>${rows}
+    <div class="row" style="margin-top:12px"><button class="primary" onclick="closeModal()">Done</button></div>`);
+  m.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ upgrade(+b.dataset.up); render(); openManage(); });
+  m.querySelectorAll('[data-sell]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.sell; if (S.levels[i]) sellBranch(i); else sellBiz(i); render(); openManage(); });
+}
+function showSpace(i){
+  if (!S) return;
+  const sp=SPACES[i];
+  if (sp.type!=='biz'){
+    const info = { payday:`Pass for ${fmt(SALARY)}. Land exactly for ${fmt(SALARY+100)}.`, audit:'Sent here by a Tax Raid? Roll doubles or pay ₹50 to leave. Owners in audit collect no rent.', news:'Draw a Market News card.', lounge:`Collect the pot of fees and taxes (${fmt(S.pot)}).`, raid:'Go straight to the Audit Office.' }[sp.type];
+    return modal(`<h3>${sp.icon} ${sp.name}</h3><p>${info}</p><button class="primary" onclick="closeModal()">OK</button>`);
+  }
+  const o=S.owners[i], base=Math.round(sp.price*0.12);
+  modal(`<h3>${sp.name}</h3><p style="color:var(--ink)">${SECTORS[sp.sector].name} · Price ${fmt(sp.price)} · ${o==null?'For sale':'Owned by '+S.players[o].name}</p>
+    <p>Rent: ${fmt(base)} · full sector ${fmt(base*2)} · ★ ${fmt(base*4)} · ★★ ${fmt(base*10)} · ★★★ ${fmt(base*18)}<br>Branch cost ${fmt(upgradeCost(i))}. Booming sector pays +50%.</p>
+    <button class="primary" onclick="closeModal()">OK</button>`);
+}
+function showFairness(){
+  const c = Fair.commit(), last = S && S.lastProof;
+  const m = modal(`<h3>🎲 Fair dice</h3>
+    <p>Before every roll, the phone's cryptographic random generator picks a secret seed and shows its SHA-256 fingerprint (the lock). When you roll, the seed is revealed and the dice are calculated from it, each face exactly 1 in 6. Nobody can change a roll after it's locked.</p>
+    ${c?`<b>Next roll lock</b><code class="seed">${c}</code>`:''}
+    ${last?`<b>Last roll: ${last.dice.join(' + ')}</b><br>Lock<code class="seed">${last.commit}</code>Seed<code class="seed">${last.seed}</code>
+    <div id="vres" style="font-size:13px;margin:6px 0"></div><button class="good" id="vbtn">Verify last roll</button>`:''}
+    <button class="primary" onclick="closeModal()">Close</button>`);
+  const vb = m.querySelector('#vbtn');
+  if (vb) vb.onclick = async ()=>{ const r = await Fair.verify(last.seed,last.commit); m.querySelector('#vres').innerHTML = r.ok && r.dice.join()===last.dice.join() ? `✅ Lock matches and seed gives ${r.dice.join(' + ')}. Fair roll.` : '❌ Mismatch!'; };
+}
+function showRules(){
+  modal(`<h3>How to play</h3><p>
+  • 3 or 4 barons start with ${fmt(START_CASH)}. Roll two dice and move around the 24-space bazaar.<br>
+  • Land on an unowned business to buy it. Rivals who land there pay you rent.<br>
+  • Own all 3 businesses in a sector for double rent, then open branches (up to ★★★) for huge rent.<br>
+  • 🔥 One sector is always booming: +50% rent. The boom shifts every 5 rounds or on Market News.<br>
+  • Pass Payday for ${fmt(SALARY)}. Land on it exactly for ${fmt(SALARY+100)}.<br>
+  • Fees go into the Investor Lounge pot, and whoever lands there takes it all.<br>
+  • 🚨 Tax Raid sends you to the Audit Office: roll doubles or pay ₹50 to leave. Owners in audit collect no rent!<br>
+  • Doubles roll again, but 3 doubles in a row triggers an audit.<br>
+  • 💼 Hostile takeover: after paying rent on a rival's business with no branches, you may buy it out for 2× its price (not if it completes their sector).<br>
+  • Can't pay? Sell branches and businesses at half price, or go bankrupt.<br>
+  • Winner: last baron standing, or highest net worth when the rounds run out.</p>
+  <button class="primary" onclick="closeModal()">Got it</button>`);
+}
+function openMenu(){
+  const m = modal(`<h3>Menu</h3><div style="display:grid;gap:8px">
+    <button id="mRules">Rules</button><button id="mFair">Fair dice proof</button>
+    <button id="mRolls">Roll history</button>
+    <button id="mQuit" class="bad">Quit to main menu</button><button class="primary" onclick="closeModal()">Back to game</button></div>`);
+  m.querySelector('#mRules').onclick=showRules;
+  m.querySelector('#mFair').onclick=showFairness;
+  m.querySelector('#mRolls').onclick=()=>modal(`<h3>Roll history</h3>${S.rolls.map(r=>`<div class="prop"><span class="grow"><b>${r.who}</b>: ${r.dice.join(' + ')}<br><span style="font-family:monospace;font-size:10px;color:var(--muted)">seed ${r.seed.slice(0,12)}… lock ${r.commit.slice(0,12)}…</span></span></div>`).join('')||'<p>No rolls yet.</p>'}<button class="primary" onclick="closeModal()">Close</button>`);
+  m.querySelector('#mQuit').onclick=()=>{ closeModal(); backToMenu(true); };
+}
+
+/* ---------- Wire up ---------- */
+$('#startBtn').onclick = newGame;
+$('#rulesBtn').onclick = showRules;
+$('#manageBtn').onclick = openManage;
+$('#bonusBtn').onclick = bonus;
+$('#menuBtn').onclick = openMenu;
+$('#resumeBtn').onclick = ()=>{ const s=loadSave(); if(s){ S=s; busy=false; if(S.phase==='over'){ backToMenu(false); return; } startGame(); } };
+(function boot(){
+  renderSeats();
+  const s = loadSave(); if (s && s.phase!=='over') $('#resumeBtn').classList.remove('hidden');
+  Ads.init();
+})();
+</script>
+</body>
+</html>

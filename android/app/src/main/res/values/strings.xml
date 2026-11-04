@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bazaar Barons</string>
+    <string name="title_activity_main">Bazaar Barons</string>
+    <string name="package_name">com.bazaarbarons.game</string>
+    <string name="custom_url_scheme">com.bazaarbarons.game</string>
+</resources>

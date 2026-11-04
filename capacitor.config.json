@@ -1,0 +1,6 @@
+{
+  "appId": "com.bazaarbarons.game",
+  "appName": "Bazaar Barons",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}
